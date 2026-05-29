@@ -2,14 +2,18 @@ from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 import chromadb
-
-# Load PDF
-pdf = PdfReader("data/AI_ML.pdf")
+import os
 
 text = ""
 
-for page in pdf.pages:
-    text += page.extract_text()
+for file in os.listdir("data"):
+    if file.endswith(".pdf"):
+        print("Reading:", file)
+
+        pdf = PdfReader(f"data/{file}")
+
+        for page in pdf.pages:
+            text += page.extract_text() + "\n"
 
 # Chunking
 splitter = RecursiveCharacterTextSplitter(
@@ -30,16 +34,26 @@ embeddings = model.encode(chunks)
 
 print("Embeddings Created")
 
-# Chroma Client
+# ChromaDB
 client = chromadb.PersistentClient(
     path="vector_store"
 )
 
-collection = client.get_or_create_collection(
+# Delete old collection if exists
+try:
+    client.delete_collection("documents")
+except:
+    pass
+try:
+    client.delete_collection("documents")
+except:
+    pass
+
+collection = client.create_collection(
     name="documents"
 )
 
-# Store in ChromaDB
+# Store chunks
 for i, chunk in enumerate(chunks):
     collection.add(
         ids=[str(i)],
